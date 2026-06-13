@@ -1639,24 +1639,101 @@ stylo = function(gui = TRUE,
       } else {
         ngram.value = ""
       }
-      #
-      if(titles.on.graphs == TRUE) {
-        graph.main.title = paste(graph.title, "\n", name.of.the.method)
-        if(analysis.type == "BCT") {
-          graph.subtitle = paste(mfw.info," MF",toupper(analyzed.features)," ",ngram.value," Culled @ ",culling.info,"%\n",
-                                 pronouns.info," ",distance.name.on.graph," Consensus ",consensus.strength," ",start.at.info, sep="")
-        } else {
-          graph.subtitle = paste(mfw.info," MF",toupper(analyzed.features)," ",ngram.value," Culled @ ",culling.info,"%\n",
-                                 pronouns.info," ",distance.name.on.graph," ",start.at.info, sep="") }
-      } else {
-        graph.main.title = ""
-        graph.subtitle = "" }
-      
-      
-      # name of the output file (strictly speaking: basename) for graphs
-      
-      # check if a custom filename has been set
-      if(is.character(custom.graph.filename) == TRUE &
+      axis(1, lwd = plot.line.thickness)
+      axis(2, lwd = plot.line.thickness)
+      box(lwd = plot.line.thickness)
+    } else if(pca.visual.flavour == "loadings"){
+      biplot(pca.results,
+             col=c("grey70", "black"),
+             cex=c(0.7, 1), xlab = "",
+             ylab = PC2_lab,
+             main = paste(graph.main.title, "\n\n", sep=""),
+             sub = paste(PC1_lab, "\n", graph.subtitle, sep=""), var.axes = FALSE)
+    } else if(pca.visual.flavour == "technical"){
+      layout(matrix(c(1,2), 2, 2, byrow = TRUE), widths=c(3,1))
+      biplot(pca.results, col=c("black", "grey40"), cex=c(1, 0.9), xlab="", ylab=PC2_lab, main=paste(graph.main.title, "\n\n", sep=""), sub=paste(PC1_lab,"\n",graph.subtitle, sep=""),var.axes=FALSE)
+      abline(h=0, v=0, col = "gray60",lty=3)
+      # add the subpanel to the right
+      row = mat.or.vec(nc = ncol(pca.results$x), nr = 1)
+      for (i in 1:ncol(row)){row[,i] = "grey45"}
+      # paint the first two PCS black -- i.e. the ones actually plotted
+      row[,1] = "black"
+      row[,2] = "black"
+      barplot(expl.var, col = row, xlab = "Principal components", ylab = "Proportion of variance explained (in %)")
+      # set a horizontal dashed line, indicating the psychological 5% barrier
+      abline(h = 5, lty = 3)
+    } else if(pca.visual.flavour == "symbols"){
+      # determine labels involved
+      labels = c()
+      for (c in rownames(pca.results$x)){
+        labels = c(labels, gsub("_.*", "", c))
+      }
+      COOR = data.frame(pca.results$x[,1:2], LABEL = labels, stringsAsFactors = TRUE)
+      labels = c(levels(COOR$LABEL))
+      # visualize
+      sps = trellis.par.get("superpose.symbol")
+      sps$pch = 1:length(labels)
+      trellis.par.set("superpose.symbol", sps)
+      ltheme = canonical.theme(color = FALSE)
+      lattice.options(default.theme = ltheme)
+      pl = xyplot(data = COOR, x = PC2~PC1, xlab = paste(PC1_lab, "\n", graph.subtitle, sep = ""), ylab = PC2_lab, groups = COOR$LABEL, sub = "", key = list(columns = 2, text = list(labels), points = Rows(sps, 1:length(labels))),
+             panel = function(x, ...){
+                 panel.xyplot(x, ...)
+                 panel.abline(v = 0, lty = 3)
+                 panel.abline(h = 0, lty = 3)
+             })
+      plot(pl)
+    }
+  }
+}
+
+# prepares a list of dendrogram-like structures for a bootstrap consensus tree
+# (the final tree will be generated later, outside the main loop of the script)
+if (analysis.type == "BCT") {
+  mfw.info = paste(mfw.min, "-", mfw.info, sep = "")
+  name.of.the.method = "Bootstrap Consensus Tree"
+  short.name.of.the.method = "Consensus"
+  # calculates the dendrogram for current settings
+  #
+########################################################################
+########################################################################
+# compatibility mode: to make one's old experiments reproducible
+  if(linkage == "nj") {
+    current.bootstrap.results = nj(as.dist(distance.table))
+    } else {
+    current.bootstrap.results = as.phylo(hclust(as.dist(distance.table),
+                                       method = linkage))
+  }
+########################################################################
+  # adds the current dendrogram to the list of all dendrograms
+  bootstrap.list[[number.of.current.iteration]] = current.bootstrap.results }
+
+
+# establishing the text to appear on the graph (unless "notitle" was chosen)
+if(ngram.size > 1) {
+      ngram.value = paste(ngram.size, "-grams", sep="")
+  } else {
+      ngram.value = ""
+  }
+
+  #
+if(titles.on.graphs == TRUE) {
+  graph.main.title = paste(graph.title, "\n", name.of.the.method)
+  if(analysis.type == "BCT") {
+      graph.subtitle = paste(mfw.info," MF",toupper(analyzed.features)," ",ngram.value," Culled @ ",culling.info,"%\n",
+                    pronouns.info," ",distance.name.on.graph," Consensus ",consensus.strength," ",start.at.info, sep="")
+  } else {
+      graph.subtitle = paste(mfw.info," MF",toupper(analyzed.features)," ",ngram.value," Culled @ ",culling.info,"%\n",
+      pronouns.info," ",distance.name.on.graph," ",start.at.info, sep="") }
+  } else {
+  graph.main.title = ""
+  graph.subtitle = "" }
+
+
+# name of the output file (strictly speaking: basename) for graphs
+
+# check if a custom filename has been set
+if(is.character(custom.graph.filename) == TRUE &
          length(custom.graph.filename) > 0) {
         # if a custom file name exists, then use it
         graph.filename = custom.graph.filename

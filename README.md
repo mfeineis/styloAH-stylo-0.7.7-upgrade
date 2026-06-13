@@ -219,11 +219,11 @@ The remarks about possible issues on MacOS apply are valid also in this case.
 
 ### 3. Installing from a local file
 
-This is an option for more advanced users. You need to obtain a so-called tarball file, which is a compressed version of the package (you can grab it from CRAN). It might be named `stylo_0.6.9.tar.gz`, depending of the current version of course. Then type in R console:
+This is an option for more advanced users. You need to obtain a so-called tarball file, which is a compressed version of the package (you can grab it from CRAN). It might be named `stylo_0.7.4.tar.gz`, depending of the current version of course. Then type in R console:
 
 ```
 setwd("I/hope/I/can/remember/where/I/have/put/the/zipfile/")
-install.packages("stylo_0.7.1.tar.gz", repos = NULL, type = "source")
+install.packages("stylo_0.7.4.tar.gz", repos = NULL, type = "source")
 ```
 
 
@@ -296,6 +296,7 @@ This section is meant to give the users a general outline of what the package ca
 ## Docs on non-obvious functionalities
 
 
+* [Performance measures in supervised classification](https://computationalstylistics.github.io/blog/performance_measures/)
 * [Authorship verification with the package 'stylo'](https://computationalstylistics.github.io/blog/imposters)
 * [Cross-validation using the function `classify()`](https://computationalstylistics.github.io/blog/cross-validation)
 * [Custom distance measures](https://computationalstylistics.github.io/blog/custom_distances)
@@ -309,6 +310,8 @@ This section is meant to give the users a general outline of what the package ca
 
 ## Other relevant resources
 
+
+* Kudos to David L. Wrisley for [a super-useful post](https://github.com/djwrisley/RLAC/blob/master/Project%20Gutenberg%20with%20Stylo/Stylo_with_texts_from_PG.Rmd) (a notebook with code snippets, to be precise) on analyzing the Gutenberg Project texts with `stylo`.
 
 * Despite a black legend, R and Python are not necessarily in a deadly clash: here is [a great post](https://cligs.hypotheses.org/577) by José Calvo Tello on invoking the package `stylo` directly from Python!
 
