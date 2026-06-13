@@ -50,7 +50,7 @@ if (!require( "statip", character.only = TRUE)) {
 print("Build and install stylo AH:")
 file.rename("styloAH-master", "styloAH") #just in case
 system("R CMD build styloAH") #build downloaded version
-install.packages("styloAH_0.7.4.9.tar.gz", repos = NULL)
+install.packages("styloAH_0.7.7.9.tar.gz", repos = NULL)
 
 print("Working directory for stylo AH:")
 newwd <- paste( theinstdir, "/styloAH", sep="")
