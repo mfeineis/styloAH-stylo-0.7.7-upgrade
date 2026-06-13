@@ -959,216 +959,209 @@ stylo = function(gui = TRUE,
   if(culling.incr <= 1) {
     culling.incr = 10
   }
-  
-  # #################################################
-  
-  
-  
-  for(j in (culling.min/culling.incr):(culling.max/culling.incr)) {
-    
-    time_inmain = Sys.time()
-    message("Main loop num: ", j, " (all) ", time_inmain - start_time, " sec")
-    current.culling = j * culling.incr
-    
-    # applying culling
-    table.with.all.freqs = perform.culling(frequencies.0.culling, current.culling)
-    if(length(table.with.all.freqs) == 0){
-      table.with.all.freqs = frequencies.0.culling
-    } 
-    
-    
-    # additionally, deleting pronouns (if applicable)
-    if(delete.pronouns == TRUE) {
-      table.with.all.freqs =
-        delete.stop.words(table.with.all.freqs, pronouns)
+
+# #################################################
+
+
+
+for(j in (culling.min/culling.incr):(culling.max/culling.incr)) {
+
+        current.culling = j * culling.incr
+
+        # applying culling
+        table.with.all.freqs = perform.culling(frequencies.0.culling,
+                                        current.culling)
+
+
+        # additionally, deleting pronouns (if applicable)
+        if(delete.pronouns == TRUE) {
+                table.with.all.freqs =
+                delete.stop.words(table.with.all.freqs, pronouns)
+        }
+
+
+        # optionally, deleting stop words
+        if(is.vector(stop.words) == TRUE) {
+                table.with.all.freqs = delete.stop.words(table.with.all.freqs,
+                                                         stop.words)
+        }
+
+
+
+
+
+
+
+# starting the frequency list at frequency rank set in option start.at above
+
+# TO SAY THE TRUTH, IT CAN BE DONE MUCH EARLIER: at the moment when
+# the frequency list for either I set or both sets is produced,
+# it can be cut and used for building freq. tables
+
+table.with.all.freqs = table.with.all.freqs[,start.at:length(table.with.all.freqs[1,])]
+
+
+
+
+
+
+
+
+
+# Testing if the desired MFW number is acceptable,
+# if MFW too large, it is set to maximum possible.
+  if(mfw.max > length(table.with.all.freqs[1,])) {
+  mfw.max = length(table.with.all.freqs[1,])
+  }
+# if too small, it is set to 2 (i.e., minimal value)
+  if(mfw.min < 2) {
+  mfw.min = 2
+  }
+# if the max value is smaller than the min value, it will be adjusted
+  if(mfw.max < mfw.min) {
+  mfw.max = mfw.min
+  }
+# avoiding infinite loops
+  if( (mfw.max != mfw.min) && (mfw.incr == 0) ) {
+  mfw.incr = 10
+  }
+
+
+
+message("\n")
+message("culling @ ", current.culling, "\t", "available features (words) ",
+                  length(table.with.all.freqs[1,]))
+
+
+# #################################################
+# z-scores calcutations
+# #################################################
+
+if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
+  # calculating z-scores (a message on the screen)
+  message("Calculating z-scores... \n")
+  # Entropy distance: experimental, but entirely available yet
+  # (the results do not really differ than for typical word frequencies)
+  #
+  #A = t(t(table.with.all.freqs + 1) / colSums(table.with.all.freqs + 1))
+  #B =t(t(log(table.with.all.freqs + 2)) / -(colSums(A * log(A))))
+  #table.with.all.freqs = B
+  #
+  # calculating z-scores
+  table.with.all.zscores = scale(table.with.all.freqs)
+  table.with.all.zscores = table.with.all.zscores[,]
+}
+
+# #################################################
+# the internal loop starts here (for i = mfw.min : mfw.max)
+# #################################################
+
+# a short message on the screen about distance calculations (when appropriate):
+if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
+
+
+
+# starting some variables that will be overwritten (unless a custom distance is used)
+distance.name.on.graph = distance.measure
+distance.name.on.file = distance.measure
+
+
+  if(distance.measure == "delta" | distance.measure == "dist.delta") {
+    message("Calculating classic Delta distances...")
+    distance.name.on.graph = "Classic Delta distance"
+    distance.name.on.file = "Classic Delta"
+  } else if(distance.measure == "argamon" | distance.measure == "dist.argamon") {
+    message("Calculating Argamon's Delta distances...")
+    distance.name.on.graph = "Argamon's Delta distance"
+    distance.name.on.file = "Argamon's Delta"
+  } else if(distance.measure == "eder" |  distance.measure == "dist.eder") {
+    message("Calculating Eder's Delta distances...")
+    distance.name.on.graph = "Eder's Delta distance"
+    distance.name.on.file = "Eder's Delta"
+  } else if(distance.measure == "simple" | distance.measure == "dist.simple") {
+    message("Calculating Eder's Simple distances...")
+    distance.name.on.graph = "Eder's Simple distance"
+    distance.name.on.file = "Eder's Simple"
+  } else if(distance.measure == "manhattan" | distance.measure == "dist.manhattan") {
+    message("Calculating Manhattan distances...")
+    distance.name.on.graph = "Manhattan distance"
+    distance.name.on.file = "Manhattan"
+  } else if(distance.measure == "canberra" | distance.measure == "dist.canberra") {
+    message("Calculating Canberra distances...")
+    distance.name.on.graph = "Canberra distance"
+    distance.name.on.file = "Canberra"
+  } else if(distance.measure == "euclidean" | distance.measure == "dist.euclidean") {
+    message("Calculating Euclidean distances...")
+    distance.name.on.graph = "Euclidean distance"
+    distance.name.on.file = "Euclidean"
+  } else if(distance.measure == "cosine" | distance.measure == "dist.cosine") {
+    message("Calculating Cosine distances...")
+    distance.name.on.graph = "Cosine distance"
+    distance.name.on.file = "Cosine"
+  } else {
+    distance.name.on.graph = paste("Distance:", distance.measure)
+    distance.name.on.file = distance.measure
+  }
+
+}
+
+
+
+
+message("MFW used: ")
+
+for(i in seq(mfw.min,mfw.max,round(mfw.incr)) ) {
+mfw = i
+
+
+# for safety reasons, if MFWs > variables in samples
+if(mfw > length(colnames(table.with.all.freqs)) ) {
+  mfw = length(colnames(table.with.all.freqs))
+}
+
+# the general counter for various purposes
+number.of.current.iteration = number.of.current.iteration + 1
+
+# the current task (number of MFW currently analyzed) echoed on the screen
+message(mfw, " ", appendLF = FALSE)
+
+# #################################################
+# module for calculating distances between texts
+# #################################################
+
+if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
+
+input.freq.table = table.with.all.freqs[,1:mfw]
+
+
+supported.measures = c("dist.euclidean", "dist.manhattan", "dist.canberra",
+                       "dist.delta", "dist.eder", "dist.argamon",
+                       "dist.simple", "dist.cosine", "dist.wurzburg",
+                       "dist.entropy", "dist.minmax", "dist.dcor", "dist.helli", "dist.wasser", "dist.jenshan", "dist.kulllei")
+
+
+
+# if the requested distance name is confusing, stop
+if(length(grep(distance.measure, supported.measures)) > 1 ) {
+    stop("Ambiguous distance method: which one did you want to use, really?")
+
+# if the requested distance name was not found invoke a custom plugin
+} else if(length(grep(distance.measure, supported.measures)) == 0 ){
+
+    # first, check if a requested custom function exists
+    if(is.function(get(distance.measure)) == TRUE) {
+        # if OK, then use the value of the variable 'distance.measure' to invoke
+        # the function of the same name, with x as its argument
+        distance.table = do.call(distance.measure, list(x = input.freq.table))
+        # check if the invoked function did produce a distance
+        if(!inherits(distance.table, "dist")) {
+            # say something nasty here, if it didn't:
+            stop("it wasn't a real distance measure function applied, was it?")
+        }
     }
-    
-    
-    # optionally, deleting stop words
-    if(is.vector(stop.words) == TRUE) {
-      table.with.all.freqs = delete.stop.words(table.with.all.freqs,
-                                               stop.words)
-    }
-    
-    
-    
-    
-    
-    
-    
-    # starting the frequency list at frequency rank set in option start.at above
-    
-    # TO SAY THE TRUTH, IT CAN BE DONE MUCH EARLIER: at the moment when
-    # the frequency list for either I set or both sets is produced,
-    # it can be cut and used for building freq. tables
-    message("indices: start ", start.at, " end ", length(table.with.all.freqs[1,]), " possible ", length(table.with.all.freqs))
-    if( length(table.with.all.freqs) != 0 && length(table.with.all.freqs[1,]) > start.at ){
-      table.with.all.freqs = table.with.all.freqs[,start.at:length(table.with.all.freqs[1,])]
-    }
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # Testing if the desired MFW number is acceptable,
-    # if MFW too large, it is set to maximum possible.
-    if(mfw.max > length(table.with.all.freqs[1,])) {
-      mfw.max = length(table.with.all.freqs[1,])
-    }
-    # if too small, it is set to 2 (i.e., minimal value)
-    if(mfw.min < 2) {
-      mfw.min = 2
-    }
-    # if the max value is smaller than the min value, it will be adjusted
-    if(mfw.max < mfw.min) {
-      mfw.max = mfw.min
-    }
-    # avoiding infinite loops
-    if( (mfw.max != mfw.min) && (mfw.incr == 0) ) {
-      mfw.incr = 10
-    }
-    
-    
-    
-    message("\n")
-    message("culling @ ", current.culling, "\t", "available features (words) ",
-            length(table.with.all.freqs[1,]))
-    
-    
-    # #################################################
-    # z-scores calcutations
-    # #################################################
-    
-    if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
-      # calculating z-scores (a message on the screen)
-      message("Calculating z-scores... \n")
-      # Entropy distance: experimental, but entirely available yet
-      # (the results do not really differ than for typical word frequencies)
-      #
-      #A = t(t(table.with.all.freqs + 1) / colSums(table.with.all.freqs + 1))
-      #B =t(t(log(table.with.all.freqs + 2)) / -(colSums(A * log(A))))
-      #table.with.all.freqs = B
-      #
-      # calculating z-scores
-      table.with.all.zscores = scale(table.with.all.freqs)
-      table.with.all.zscores = table.with.all.zscores[,]
-    }
-    
-    # #################################################
-    # the internal loop starts here (for i = mfw.min : mfw.max)
-    # #################################################
-    
-    # a short message on the screen about distance calculations (when appropriate):
-    if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
-      
-      
-      
-      # starting some variables that will be overwritten (unless a custom distance is used)
-      distance.name.on.graph = distance.measure
-      distance.name.on.file = distance.measure
-      
-      
-      if(distance.measure == "delta" | distance.measure == "dist.delta") {
-        message("Calculating classic Delta distances...")
-        distance.name.on.graph = "Classic Delta distance"
-        distance.name.on.file = "Classic Delta"
-      } else if(distance.measure == "argamon" | distance.measure == "dist.argamon") {
-        message("Calculating Argamon's Delta distances...")
-        distance.name.on.graph = "Argamon's Delta distance"
-        distance.name.on.file = "Argamon's Delta"
-      } else if(distance.measure == "eder" |  distance.measure == "dist.eder") {
-        message("Calculating Eder's Delta distances...")
-        distance.name.on.graph = "Eder's Delta distance"
-        distance.name.on.file = "Eder's Delta"
-      } else if(distance.measure == "simple" | distance.measure == "dist.simple") {
-        message("Calculating Eder's Simple distances...")
-        distance.name.on.graph = "Eder's Simple distance"
-        distance.name.on.file = "Eder's Simple"
-      } else if(distance.measure == "manhattan" | distance.measure == "dist.manhattan") {
-        message("Calculating Manhattan distances...")
-        distance.name.on.graph = "Manhattan distance"
-        distance.name.on.file = "Manhattan"
-      } else if(distance.measure == "canberra" | distance.measure == "dist.canberra") {
-        message("Calculating Canberra distances...")
-        distance.name.on.graph = "Canberra distance"
-        distance.name.on.file = "Canberra"
-      } else if(distance.measure == "euclidean" | distance.measure == "dist.euclidean") {
-        message("Calculating Euclidean distances...")
-        distance.name.on.graph = "Euclidean distance"
-        distance.name.on.file = "Euclidean"
-      } else if(distance.measure == "cosine" | distance.measure == "dist.cosine") {
-        message("Calculating Cosine distances...")
-        distance.name.on.graph = "Cosine distance"
-        distance.name.on.file = "Cosine"
-      } else {
-        distance.name.on.graph = paste("Distance:", distance.measure)
-        distance.name.on.file = distance.measure
-      }
-      
-    }
-    
-    
-    
-    
-    message("MFW used: ")
-    
-    for(i in seq(mfw.min,mfw.max,round(mfw.incr)) ) {
-      mfw = i
-      
-      print(mfw)
-      
-      # for safety reasons, if MFWs > variables in samples
-      if(mfw > length(colnames(table.with.all.freqs)) ) {
-        mfw = length(colnames(table.with.all.freqs))
-      }
-      
-      # the general counter for various purposes
-      number.of.current.iteration = number.of.current.iteration + 1
-      
-      # the current task (number of MFW currently analyzed) echoed on the screen
-      message(mfw, " ", appendLF = FALSE)
-      
-      # #################################################
-      # module for calculating distances between texts
-      # #################################################
-      
-      if((analysis.type == "CA") || (analysis.type == "BCT") || (analysis.type == "MDS")){
-        
-        input.freq.table = table.with.all.freqs[,1:mfw]
-        
-        
-        supported.measures = c("dist.euclidean", "dist.manhattan", "dist.canberra",
-                               "dist.delta", "dist.eder", "dist.argamon",
-                               "dist.simple", "dist.cosine", "dist.wurzburg",
-                               "dist.entropy", "dist.minmax", "dist.dcor", "dist.helli", "dist.wasser", "dist.jenshan", "dist.kulllei")
-        
-        
-        
-        # if the requested distance name is confusing, stop
-        if(length(grep(distance.measure, supported.measures)) > 1 ) {
-          stop("Ambiguous distance method: which one did you want to use, really?")
-          
-          # if the requested distance name was not found invoke a custom plugin
-        } else if(length(grep(distance.measure, supported.measures)) == 0 ){
-          
-          # first, check if a requested custom function exists
-          if(is.function(get(distance.measure)) == TRUE) {
-            # if OK, then use the value of the variable 'distance.measure' to invoke
-            # the function of the same name, with x as its argument
-            distance.table = do.call(distance.measure, list(x = input.freq.table))
-            # check if the invoked function did produce a distance
-            if(class(distance.table) != "dist") {
-              # say something nasty here, if it didn't:
-              stop("it wasn't a real distance measure function applied, was it?")
-            }
-          }
-          
-          # when the chosen distance measure is among the supported ones, use it
-        } else {
+
+# when the chosen distance measure is among the supported ones, use it
+} else {
           
           # extract the long name of the distance (the "official" name)
           distance = supported.measures[grep(distance.measure, supported.measures)]
@@ -1218,8 +1211,6 @@ stylo = function(gui = TRUE,
             distance.table = do.call(distance, list(x = table.with.all.zscores[,1:mfw], scale = FALSE))    
           }
           
-        }
-        
         time_afterdist = Sys.time()
         message("After distance comp", j, " ", i, " (loop) ", time_afterdist - time_inmain, " (all) ",time_afterdist - start_time)
         
@@ -1324,7 +1315,87 @@ stylo = function(gui = TRUE,
           dev.off()
           
         }
-        
+
+}
+
+# convert the table to the format of matrix
+distance.table = as.matrix(distance.table)
+
+
+
+  # replaces the names of the samples (the extension ".txt" is cut off)
+  rownames(distance.table)=gsub("(\\.txt$)||(\\.xml$)||(\\.html$)||(\\.htm$)",
+                        "",rownames(table.with.all.freqs))
+  colnames(distance.table)=gsub("(\\.txt$)||(\\.xml$)||(\\.html$)||(\\.htm$)",
+                        "",rownames(table.with.all.freqs))
+}
+
+
+
+
+
+# #################################################
+# a tiny module for graph auto-coloring:
+# uses the functions "metadata.processing()"
+# and assign.plot.colors()"
+# #################################################
+
+groups = suppressMessages(process.metadata(metadata = metadata, 
+                          filenames = rownames(table.with.all.freqs),
+                          filename.column = filename.column,
+                          grouping.column = grouping.column))
+
+# using an appropriate function to assing colors to subsequent samples
+colors.of.pca.graph = assign.plot.colors(labels = groups,
+                            col = colors.on.graphs, opacity = 1)
+
+
+
+
+
+# #################################################
+# preparing the graphs
+# #################################################
+
+# The name of a given method will appear in the title of the graph
+# (if the appropriate option was chosen), and will be pasted into
+# a filename of the current job. First, variables are initiated...
+name.of.the.method = ""
+short.name.of.the.method = ""
+mfw.info = mfw
+plot.current.task = function() {NULL}
+
+# getting rid of redundant start.at information
+  if(start.at == 1) {
+    start.at.info = ""
+    } else {
+    start.at.info = paste("Started at",start.at) }
+# getting rid of redundant pronoun information
+  if(delete.pronouns == TRUE) {
+    pronouns.info = paste("Pronouns deleted")
+    } else {
+    pronouns.info = "" }
+# getting rid of redundant culling information
+  if(culling.min == culling.max) {
+    culling.info = culling.min
+    } else {
+    culling.info = paste(culling.min, "-", culling.max, sep = "") }
+
+# prepares a dendrogram for the current MFW value for CA plotting
+if(analysis.type == "CA") {
+  name.of.the.method = "Cluster Analysis"
+  short.name.of.the.method = "CA"
+  if(dendrogram.layout.horizontal == TRUE) {
+    dendrogram.margins =  c(5,4,4,8)+0.1
+    } else {
+    dendrogram.margins = c(8,5,4,4)+0.1 }
+  # the following task will be plotted
+  plot.current.task = function(){
+    par(mar=dendrogram.margins)
+        # neighbor joining clustering algorithm needs a different call:
+        if(linkage == "nj") {
+          plot(nj(distance.table), font=1, tip.color = colors.of.pca.graph)
+        # any other linkage algorithm is produced by hclust()
         
         # convert the table to the format of matrix
         distance.table = as.matrix(distance.table)
