@@ -50,14 +50,18 @@ stylo = function(gui = TRUE,
     # if the argument was empty, then relax
     message("using current directory...")
   }
-  
-  if(is.character(corpus.dir) == FALSE | nchar(corpus.dir) == 0) {
-    corpus.dir = "corpus"
-  }
-  
-  # loading the default settings as defined in the following function
-  # (it absorbes the arguments passed from command-line)
-  variables = stylo.default.settings(...)
+
+if(is.character(corpus.dir) == FALSE | nchar(corpus.dir) == 0) {
+  corpus.dir = "corpus"
+}
+
+
+# loading the default settings as defined in the following function
+# (it absorbes the arguments passed from command-line)
+variables = stylo.default.settings(...)
+
+
+
   if(gui == FALSE){ #overwrite the default values with the values of a stylo_config.txt
     if(file.exists("stylo_config.txt") == TRUE) {
       source("stylo_config.txt", local = TRUE) 
@@ -70,29 +74,27 @@ stylo = function(gui = TRUE,
   }
   print("wwwwwwwwwwwwwwwwwwwwwwww")
   print(variables)
-  # optionally, displaying a GUI box
-  # (it absorbes the arguments passed from command-line)
-  if (gui == TRUE) {
-    # first, checking if the GUI can be displayed
-    # (the conditional expression is stolen form the generic function "menu")
-    if (.Platform$OS.type == "windows" || .Platform$GUI ==
-        "AQUA" || (capabilities("tcltk") && capabilities("X11") &&
-                   suppressWarnings(tcltk::.TkUp))) {
-      variables = gui.stylo(...)
-    } else {
-      message(" ")
-      message("GUI could not be launched -- default settings will be used;")
-      message("otherwise please pass your variables as command-line agruments\n")
-    }
-  }
-  
-  
-  
-  
-  
-  
-  
-  
+
+
+# optionally, displaying a GUI box
+# (it absorbes the arguments passed from command-line)
+if (gui == TRUE) {
+      # first, checking if the GUI can be displayed
+      # (the conditional expression is stolen form the generic function "menu")
+      if (.stylo_gui_available()) {
+        variables = gui.stylo(...)
+      } else {
+        message(" ")
+        message("GUI could not be launched -- default settings will be used;")
+        message("otherwise please pass your variables as command-line arguments\n")
+      }
+}
+
+
+
+
+
+
   # #############################################################################
   # Explicit assignment of all the variables, in order to avoid attach()
   # #############################################################################
@@ -546,48 +548,63 @@ stylo = function(gui = TRUE,
       stop("Wrong corpus format")
     }
   }
-  ###############################################################################
-  
-  
-  
-  
-  # If there's still no corpus available, then load and parse text files.
-  # They are supposed to be stored in a specified corpus subfolder and to follow
-  # a strictly defined naming convention.
-  
-  ###############################################################################
-  # Building a corpus from text files
-  
-  if(corpus.exists == FALSE) {
-    
-    # Checking whether the required subdirectory exists, calling the choose directory dialogue if not.
-    if(file.exists(corpus.dir) == FALSE) {
-      selected.path = tk_choose.dir(caption = "Select your working directory. It should have a subdirectory called *corpus* ")
-      setwd(selected.path)
-    }
-    if(file.exists(corpus.dir) == FALSE) {
-      message("\n\n", "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
+###############################################################################
+
+
+
+
+# If there's still no corpus available, then load and parse text files.
+# They are supposed to be stored in a specified corpus subfolder and to follow
+# a strictly defined naming convention.
+
+###############################################################################
+# Building a corpus from text files
+
+if(corpus.exists == FALSE) {
+
+  # Checking whether the required subdirectory exists, calling the choose directory dialogue if not.
+  if(file.exists(corpus.dir) == FALSE) {
+    selected.path = .stylo_choose_dir(
+      caption = "Select your working directory. It should have a subdirectory called *corpus* ",
+      error_message = paste0(
+        "Working directory should contain the subdirectory \"",
+        corpus.dir,
+        "\". Pass `path` to a directory containing it."
+      )
+    )
+    setwd(selected.path)
+  }
+  if(file.exists(corpus.dir) == FALSE) {
+          message("\n\n", "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n",
               "Hey! The working directory should contain the subdirectory \"",
               corpus.dir,"\"\n",
               "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n")
-      # back to the original working directory
-      setwd(original.path)
-      # error message
-      stop("Corpus prepared incorrectly")
-    }
-    
-    # Retrieving the names of texts.
-    # It's possible to choose the files manually (choose an appropriate option!)
-    if (interactive.files == TRUE) {
-      # go to corpus directory
-      setwd(corpus.dir)
-      corpus.filenames = basename(tk_choose.files(default = "",
-                                                  caption = "Select at least 2 files", multi = TRUE))
-      # back to the working directory
-      setwd("..")
-    } else {
-      # alternatively, one can use the files listed in "files_to_analyze.txt";
-      # the listed files can be separated by spaces, tabs, or newlines
+          # back to the original working directory
+          setwd(original.path)
+          # error message
+          stop("Corpus prepared incorrectly")
+  }
+  
+  # Retrieving the names of texts.
+  # It's possible to choose the files manually (choose an appropriate option!)
+  if (interactive.files == TRUE) {
+    # go to corpus directory
+    setwd(corpus.dir)
+    corpus.filenames = basename(.stylo_choose_files(
+      default = "",
+      caption = "Select at least 2 files",
+      multi = TRUE,
+      error_message = paste0(
+        "Interactive file selection requires Tcl/Tk. Set `interactive.files = FALSE` or provide files in `",
+        corpus.dir,
+        "`."
+      )
+    ))
+    # back to the working directory
+    setwd("..")
+  } else {
+    # alternatively, one can use the files listed in "files_to_analyze.txt";
+    # the listed files can be separated by spaces, tabs, or newlines
       if(use.custom.list.of.files ==TRUE & file.exists("files_to_analyze.txt") ==TRUE) {
         # a message on the screen
         message("\n")
@@ -1385,10 +1402,12 @@ plot.current.task = function() {NULL}
 if(analysis.type == "CA") {
   name.of.the.method = "Cluster Analysis"
   short.name.of.the.method = "CA"
+  max.label.chars = max(nchar(rownames(distance.table)))
+  label.margin = max(8, ceiling(max.label.chars * 0.6))
   if(dendrogram.layout.horizontal == TRUE) {
-    dendrogram.margins =  c(5,4,4,8)+0.1
+    dendrogram.margins = c(5, 4, 4, label.margin) + 0.1
     } else {
-    dendrogram.margins = c(8,5,4,4)+0.1 }
+    dendrogram.margins = c(label.margin, 5, 4, 4) + 0.1 }
   # the following task will be plotted
   plot.current.task = function(){
     par(mar=dendrogram.margins)
