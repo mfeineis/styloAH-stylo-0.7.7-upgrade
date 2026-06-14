@@ -1415,120 +1415,42 @@ if(analysis.type == "CA") {
         if(linkage == "nj") {
           plot(nj(distance.table), font=1, tip.color = colors.of.pca.graph)
         # any other linkage algorithm is produced by hclust()
-        
-        # convert the table to the format of matrix
-        distance.table = as.matrix(distance.table)
-        
-        
-        
-        # replaces the names of the samples (the extension ".txt" is cut off)
-        rownames(distance.table)=gsub("(\\.txt$)||(\\.xml$)||(\\.html$)||(\\.htm$)",
-                                      "",rownames(table.with.all.freqs))
-        colnames(distance.table)=gsub("(\\.txt$)||(\\.xml$)||(\\.html$)||(\\.htm$)",
-                                      "",rownames(table.with.all.freqs))
-      }
-      
-      
-      
-      
-      
-      # #################################################
-      # a tiny module for graph auto-coloring:
-      # uses the functions "metadata.processing()"
-      # and assign.plot.colors()"
-      # #################################################
-      
-      groups = process.metadata(metadata = metadata, 
-                                filenames = rownames(table.with.all.freqs),
-                                filename.column = filename.column,
-                                grouping.column = grouping.column)
-      
-      # using an appropriate function to assing colors to subsequent samples
-      colors.of.pca.graph = assign.plot.colors(labels = groups,
-                                               col = colors.on.graphs, opacity = 1)
-      
-      
-      
-      
-      
-      # #################################################
-      # preparing the graphs
-      # #################################################
-      
-      # The name of a given method will appear in the title of the graph
-      # (if the appropriate option was chosen), and will be pasted into
-      # a filename of the current job. First, variables are initiated...
-      name.of.the.method = ""
-      short.name.of.the.method = ""
-      mfw.info = mfw
-      plot.current.task = function() {NULL}
-      
-      # getting rid of redundant start.at information
-      if(start.at == 1) {
-        start.at.info = ""
-      } else {
-        start.at.info = paste("Started at",start.at) }
-      # getting rid of redundant pronoun information
-      if(delete.pronouns == TRUE) {
-        pronouns.info = paste("Pronouns deleted")
-      } else {
-        pronouns.info = "" }
-      # getting rid of redundant culling information
-      if(culling.min == culling.max) {
-        culling.info = culling.min
-      } else {
-        culling.info = paste(culling.min, "-", culling.max, sep = "") }
-      
-      # prepares a dendrogram for the current MFW value for CA plotting
-      if(analysis.type == "CA") {
-        name.of.the.method = "Cluster Analysis"
-        short.name.of.the.method = "CA"
-        if(dendrogram.layout.horizontal == TRUE) {
-          dendrogram.margins =  c(5,4,4,8)+0.1
         } else {
-          dendrogram.margins = c(8,5,4,4)+0.1 }
-        # the following task will be plotted
-        plot.current.task = function(){
-          #par(mar=dendrogram.margins)
-          # neighbor joining clustering algorithm needs a different call:
-          if(linkage == "nj") {
-            plot(nj(distance.table), font=1, tip.color = colors.of.pca.graph)
-            # any other linkage algorithm is produced by hclust()
+          # clustering the distances stored in the distance.table
+          clustered.data = hclust(as.dist(distance.table), method = linkage)
+          # reordering the vector of colors to fit the order of clusters
+          colors.on.dendrogram = colors.of.pca.graph[clustered.data$order]
+          # converting the clusters into common dendrogram format
+          tree.with.clusters = as.dendrogram(clustered.data, hang=0)
+          # now, preparing the procedure for changing leaves' color attributes
+          # (this snippet is taken from "help(dendrapply)" and slightly adjusted)
+                  colLab = function(n) {
+                          if(is.leaf(n)) {
+                                  a <- attributes(n)
+                                  i <<- i+1
+                                  attr(n, "nodePar") <-
+                                  c(a$nodePar, lab.col = mycols[i], pch = NA)
+                          }
+                          n
+                  }
+                  mycols = colors.on.dendrogram
+                  attributes(mycols) = NULL
+                  i = 0
+          # adding the attributes to subsequent leaves of the dendrogram,
+          # using the above colLab(n) function
+          dendrogram.with.colors = dendrapply(tree.with.clusters, colLab)
+          # finally, ploting the whole stuff
+          plot(dendrogram.with.colors, main = graph.main.title,
+                  horiz = dendrogram.layout.horizontal)
+          if(dendrogram.layout.horizontal == TRUE) {
+                  title(sub = graph.subtitle)
           } else {
-            # clustering the distances stored in the distance.table
-            clustered.data = hclust(as.dist(distance.table), method = linkage)
-            # reordering the vector of colors to fit the order of clusters
-            colors.on.dendrogram = colors.of.pca.graph[clustered.data$order]
-            # converting the clusters into common dendrogram format
-            tree.with.clusters = as.dendrogram(clustered.data, hang=0)
-            # now, preparing the procedure for changing leaves' color attributes
-            # (this snippet is taken from "help(dendrapply)" and slightly adjusted)
-            colLab = function(n) {
-              if(is.leaf(n)) {
-                a <- attributes(n)
-                i <<- i+1
-                attr(n, "nodePar") <-
-                  c(a$nodePar, lab.col = mycols[i], pch = NA)
-              }
-              n
-            }
-            mycols = colors.on.dendrogram
-            attributes(mycols) = NULL
-            i = 0
-            # adding the attributes to subsequent leaves of the dendrogram,
-            # using the above colLab(n) function
-            dendrogram.with.colors = dendrapply(tree.with.clusters, colLab)
-            # finally, ploting the whole stuff
-            plot(dendrogram.with.colors, main = graph.main.title,
-                 horiz = dendrogram.layout.horizontal)
-            if(dendrogram.layout.horizontal == TRUE) {
-              title(sub = graph.subtitle)
-            } else {
-              title(sub = graph.subtitle, outer = TRUE, line = -1)
-            }
+                  title(sub = graph.subtitle, outer = TRUE, line = -1)
           }
         }
-      }
+    }
+}
+       
       
       
       # prepares a 2-dimensional plot (MDS) for plotting
@@ -1699,83 +1621,7 @@ if(analysis.type == "CA") {
           }
         }
       }
-      
-      
-      # prepares a list of dendrogram-like structures for a bootstrap consensus tree
-      # (the final tree will be generated later, outside the main loop of the script)
-      if (analysis.type == "BCT") {
-        mfw.info = paste(mfw.min, "-", mfw.info, sep = "")
-        name.of.the.method = "Bootstrap Consensus Tree"
-        short.name.of.the.method = "Consensus"
-        # calculates the dendrogram for current settings
-        #
-        ########################################################################
-        ########################################################################
-        # compatibility mode: to make one's old experiments reproducible
-        if(linkage == "nj") {
-          current.bootstrap.results = nj(as.dist(distance.table))
-        } else {
-          current.bootstrap.results = as.phylo(hclust(as.dist(distance.table),
-                                                      method = linkage))
-        }
-        ########################################################################
-        # adds the current dendrogram to the list of all dendrograms
-        bootstrap.list[[number.of.current.iteration]] = current.bootstrap.results }
-      
-      
-      # establishing the text to appear on the graph (unless "notitle" was chosen)
-      if(ngram.size > 1) {
-        ngram.value = paste(ngram.size, "-grams", sep="")
-      } else {
-        ngram.value = ""
-      }
-      axis(1, lwd = plot.line.thickness)
-      axis(2, lwd = plot.line.thickness)
-      box(lwd = plot.line.thickness)
-    } else if(pca.visual.flavour == "loadings"){
-      biplot(pca.results,
-             col=c("grey70", "black"),
-             cex=c(0.7, 1), xlab = "",
-             ylab = PC2_lab,
-             main = paste(graph.main.title, "\n\n", sep=""),
-             sub = paste(PC1_lab, "\n", graph.subtitle, sep=""), var.axes = FALSE)
-    } else if(pca.visual.flavour == "technical"){
-      layout(matrix(c(1,2), 2, 2, byrow = TRUE), widths=c(3,1))
-      biplot(pca.results, col=c("black", "grey40"), cex=c(1, 0.9), xlab="", ylab=PC2_lab, main=paste(graph.main.title, "\n\n", sep=""), sub=paste(PC1_lab,"\n",graph.subtitle, sep=""),var.axes=FALSE)
-      abline(h=0, v=0, col = "gray60",lty=3)
-      # add the subpanel to the right
-      row = mat.or.vec(nc = ncol(pca.results$x), nr = 1)
-      for (i in 1:ncol(row)){row[,i] = "grey45"}
-      # paint the first two PCS black -- i.e. the ones actually plotted
-      row[,1] = "black"
-      row[,2] = "black"
-      barplot(expl.var, col = row, xlab = "Principal components", ylab = "Proportion of variance explained (in %)")
-      # set a horizontal dashed line, indicating the psychological 5% barrier
-      abline(h = 5, lty = 3)
-    } else if(pca.visual.flavour == "symbols"){
-      # determine labels involved
-      labels = c()
-      for (c in rownames(pca.results$x)){
-        labels = c(labels, gsub("_.*", "", c))
-      }
-      COOR = data.frame(pca.results$x[,1:2], LABEL = labels, stringsAsFactors = TRUE)
-      labels = c(levels(COOR$LABEL))
-      # visualize
-      sps = trellis.par.get("superpose.symbol")
-      sps$pch = 1:length(labels)
-      trellis.par.set("superpose.symbol", sps)
-      ltheme = canonical.theme(color = FALSE)
-      lattice.options(default.theme = ltheme)
-      pl = xyplot(data = COOR, x = PC2~PC1, xlab = paste(PC1_lab, "\n", graph.subtitle, sep = ""), ylab = PC2_lab, groups = COOR$LABEL, sub = "", key = list(columns = 2, text = list(labels), points = Rows(sps, 1:length(labels))),
-             panel = function(x, ...){
-                 panel.xyplot(x, ...)
-                 panel.abline(v = 0, lty = 3)
-                 panel.abline(h = 0, lty = 3)
-             })
-      plot(pl)
-    }
-  }
-}
+
 
 # prepares a list of dendrogram-like structures for a bootstrap consensus tree
 # (the final tree will be generated later, outside the main loop of the script)
