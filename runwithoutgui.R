@@ -11,8 +11,8 @@ if( rstudioapi::isAvailable() ){
 } 
 print( getwd() )
 library( reticulate )
-source_python("textnorm.py")
-source_python("textdecomp.py")
+source_python("inst/python/textnorm.py")
+source_python("inst/python/textdecomp.py")
 library( parallel )
 library( transport )
 library( statip )
